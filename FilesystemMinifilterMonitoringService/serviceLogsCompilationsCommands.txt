@@ -1,0 +1,8 @@
+mc.exe .\FilesystemMinifilterSvc.mc
+
+rc.exe -r -fo FilesystemMinifilterSvc.res .\FilesystemMinifilterSvc.rc
+
+link.exe /DLL /NOENTRY /MACHINE:X64 /OUT:FilesystemMinifilterSvc.dll .\FilesystemMinifilterSvc.res
+
+then on VM:
+New-EventLog -LogName "FilesystemMinifilter" -Source "FilesystemMinifilterMonitoringService" -MessageResourceFile "C:\Users\user\Desktop\HostStuff\FilesystemMinifilter\FilesystemMinifilterSvc.dll"

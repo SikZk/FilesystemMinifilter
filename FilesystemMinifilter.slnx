@@ -3,10 +3,10 @@
     <Platform Name="ARM64" />
     <Platform Name="x64" />
   </Configurations>
-  <Project Path="../FilesystemMinifilterMonitoringService/FilesystemMinifilterMonitoringService.vcxproj" Id="ea3d78b4-bed5-4767-8161-ad0aa5f605a1">
+  <Project Path="FilesystemMinifilterMonitoringService/FilesystemMinifilterMonitoringService.vcxproj" Id="ea3d78b4-bed5-4767-8161-ad0aa5f605a1">
     <Platform Project="x64" />
   </Project>
-  <Project Path="FilesystemMinifilter.vcxproj">
+  <Project Path="FilesystemMinifilter/FilesystemMinifilter.vcxproj" Id="72303203-6e13-be32-b94f-ce2e828cc149">
     <Deploy />
   </Project>
 </Solution>
