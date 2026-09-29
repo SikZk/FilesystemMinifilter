@@ -2,11 +2,6 @@
 #include <ntifs.h>
 #include <fltKernel.h>
 
-typedef struct _TRANSACTION_CONTEXT
-{
-	ULONG Flags;
-}TRANSACTION_CONTEXT, * PTRANSACTION_CONTEXT;
-
 extern PFLT_FILTER Filter;
 extern PFLT_PORT FilterPort;
 extern UNICODE_STRING FilterName;

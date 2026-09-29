@@ -11,7 +11,7 @@ FreeLog(
 {
     if (Log != NULL)
     {
-        ExFreePool2(Log, 'iniM', 0, 0);
+        ExFreePool2(CONTAINING_RECORD(Log, FS_LOG_ENTRY, Telemetry), 'iniM', 0, 0);
         InterlockedDecrement(&LogCount);
     }
 }
@@ -29,7 +29,7 @@ FreeLogList()
         ListEntry = RemoveHeadList(&LogList);
         KeReleaseSpinLock(&LogLock, OldIrql);
 
-        FreeLog((PFS_TELEMETRY)ListEntry);
+        FreeLog(&CONTAINING_RECORD(ListEntry, FS_LOG_ENTRY, List)->Telemetry);
 
         KeAcquireSpinLock(&LogLock, &OldIrql);
     }
@@ -40,7 +40,7 @@ FreeLogList()
 
 NTSTATUS
 SendLogs(
-    _In_  PVOID  OutputBuffer,
+    _Out_writes_bytes_to_(OutputBufferSize, *ReturnOutputBufferLength) PVOID OutputBuffer,
     _In_  ULONG  OutputBufferSize,
     _Out_ PULONG ReturnOutputBufferLength
 )
@@ -48,28 +48,44 @@ SendLogs(
     KIRQL    OldIrql = 0;
     ULONG    BytesWritten = 0;
     PUCHAR   Destination = (PUCHAR)OutputBuffer;
-    ULONG    CopySize = sizeof(FS_TELEMETRY) - sizeof(LIST_ENTRY);
+    NTSTATUS Status = STATUS_SUCCESS;
 
-    KeAcquireSpinLock(&LogLock, &OldIrql);
-
-    while (IsListEmpty(&LogList) == FALSE
-        &&
-        (SIZE_T)(OutputBufferSize - BytesWritten) >= sizeof(FS_TELEMETRY))
+    while (OutputBufferSize - BytesWritten >= sizeof(FS_TELEMETRY))
     {
-        PFS_TELEMETRY Log = (PFS_TELEMETRY)RemoveHeadList(&LogList);
+        KeAcquireSpinLock(&LogLock, &OldIrql);
 
-        RtlCopyMemory(Destination, (PUCHAR)Log + sizeof(LIST_ENTRY), CopySize);
+        if (IsListEmpty(&LogList))
+        {
+            KeReleaseSpinLock(&LogLock, OldIrql);
+            break;
+        }
 
-        BytesWritten += CopySize;
-        Destination += CopySize;
+        PFS_LOG_ENTRY Entry = CONTAINING_RECORD(RemoveHeadList(&LogList), FS_LOG_ENTRY, List);
 
-        FreeLog(Log);
+        KeReleaseSpinLock(&LogLock, OldIrql);
+
+        __try
+        {
+            RtlCopyMemory(Destination, &Entry->Telemetry, sizeof(FS_TELEMETRY));
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
+            KeAcquireSpinLock(&LogLock, &OldIrql);
+            InsertHeadList(&LogList, &Entry->List);
+            KeReleaseSpinLock(&LogLock, OldIrql);
+
+            Status = GetExceptionCode();
+            break;
+        }
+
+        BytesWritten += sizeof(FS_TELEMETRY);
+        Destination += sizeof(FS_TELEMETRY);
+
+        FreeLog(&Entry->Telemetry);
     }
 
-    KeReleaseSpinLock(&LogLock, OldIrql);
-
     *ReturnOutputBufferLength = BytesWritten;
-    return STATUS_SUCCESS;
+    return Status;
 }
 
 VOID
@@ -79,16 +95,13 @@ InsertLog(
 {
     KIRQL OldIrql;
     KeAcquireSpinLock(&LogLock, &OldIrql);
-    InsertTailList(&LogList, &Log->List);
+    InsertTailList(&LogList, &CONTAINING_RECORD(Log, FS_LOG_ENTRY, Telemetry)->List);
     KeReleaseSpinLock(&LogLock, OldIrql);
 }
 
 PFS_TELEMETRY
 CreateLog()
 {
-    //
-    // Reserve a slot. If we'd exceed the cap, give it back and drop
-    //
 
     if (InterlockedIncrement(&LogCount) > MAX_LOG_COUNT)
     {
@@ -96,12 +109,13 @@ CreateLog()
         return 0;
     }
 
-    PFS_TELEMETRY Log = (PFS_TELEMETRY)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(FS_TELEMETRY), 'iniM');
+    PFS_LOG_ENTRY Entry = (PFS_LOG_ENTRY)ExAllocatePool2(POOL_FLAG_NON_PAGED, sizeof(FS_LOG_ENTRY), 'iniM');
 
-    if (Log == 0)
+    if (Entry == 0)
     {
         InterlockedDecrement(&LogCount);
+        return 0;
     }
 
-    return Log;
+    return &Entry->Telemetry;
 }

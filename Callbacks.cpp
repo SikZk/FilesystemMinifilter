@@ -1,3 +1,4 @@
+#include <initguid.h>   // must come before ntifs.h so GUID_ECP_* get defined here, not just declared
 #include "Callbacks.h"
 #include "Log.h"
 #include <ws2def.h>
@@ -267,9 +268,6 @@ SetLogPreOperationData(
     Log->Transaction = (SIZE_T)FltObjects->Transaction;
     Log->ProcessId = PsGetCurrentProcessId();
     Log->ThreadId = PsGetCurrentThreadId();
-
-    Log->Parameters = Iopb->Parameters;
-
 
     switch (Iopb->MajorFunction) {
         case IRP_MJ_CREATE: {

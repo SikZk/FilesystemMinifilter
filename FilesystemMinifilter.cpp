@@ -26,7 +26,7 @@ CONST FLT_OPERATION_REGISTRATION Callbacks[] =
     { IRP_MJ_SET_INFORMATION,                      0, PreOperationCallback, PostOperationCallback },
     { IRP_MJ_DIRECTORY_CONTROL,                    0, PreOperationCallback, PostOperationCallback },
     { IRP_MJ_ACQUIRE_FOR_SECTION_SYNCHRONIZATION,  0, PreOperationCallback, PostOperationCallback },
-    { IRP_MJ_CLEANUP,                              0, PreOperationCallback, 0 },
+    { IRP_MJ_CLEANUP,                              0, PreOperationCallback, PostOperationCallback },
     { IRP_MJ_OPERATION_END }
 };
 
